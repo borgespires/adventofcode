@@ -1,5 +1,5 @@
 # Advent of Code 2015
-Solutions for [adventofcode 2015](http://adventofcode.com/2015).
+Solutions for [adventofcode 2015](http://adventofcode.com/2015). (with Go)
 
 - [Day 1: Not Quite Lisp](day1)
 - [Day 2: I Was Told There Would Be No Math](day2)
