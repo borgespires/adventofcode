@@ -46,13 +46,13 @@ fn common_box_letters(ids: &[&str]) -> Option<String> {
     }
 
     for i in 1..ids.len() {
-        let (_, tail) = ids.split_at(i);
-        let head = &ids[i - 1];
+        let (_, other_ids) = ids.split_at(i);
+        let current_id = &ids[i - 1];
 
-        if let Some(common) = tail
+        if let Some(common) = other_ids
             .iter()
-            .map(|s| common(head, s))
-            .find(|s| exact_diff_of(*head, s, 1))
+            .map(|other_id| common(current_id, other_id))
+            .find(|other_id| exact_diff_of(*current_id, other_id, 1))
         {
             return Some(common);
         }
