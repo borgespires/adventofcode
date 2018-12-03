@@ -3,36 +3,44 @@ use std::fs::File;
 use std::io::prelude::*;
 
 fn checksum(ids: &[&str]) -> i32 {
-    fn box_value(id: &str) -> (i32, i32) {
+    fn score_box(id: &str) -> (bool, bool) {
         let mut count = HashMap::new();
 
         for c in id.chars() {
             *count.entry(c).or_insert(0) += 1;
         }
 
-        let twos = count.values().any(|v| *v == 2) as i32;
-        let threes = count.values().any(|v| *v == 3) as i32;
+        let has_duplicates = count.values().any(|v| *v == 2);
+        let has_triplicates = count.values().any(|v| *v == 3);
 
-        return (twos, threes);
+        return (has_duplicates, has_triplicates);
     }
 
-    let (twos, threes) = ids
-        .iter()
-        .map(|id| box_value(id))
-        .fold((0, 0), |(twos, threes), value| {
-            (twos + value.0, threes + value.1)
-        });
+    fn into_occurrence_count(
+        (prev_dup, prev_trip): (i32, i32),
+        (has_duplicates, has_triplicates): (bool, bool),
+    ) -> (i32, i32) {
+        let new_duplicates = if has_duplicates { prev_dup + 1 } else { prev_dup };
+        let new_triplicates = if has_triplicates { prev_trip + 1 } else { prev_trip };
+        return (new_duplicates, new_triplicates);
+    }
 
-    return twos * threes;
+    let (duplicates, triplicates) = ids
+        .iter()
+        .map(|id| score_box(id))
+        .fold((0, 0), into_occurrence_count);
+
+    return duplicates * triplicates;
 }
 
 fn common_box_letters(ids: &[&str]) -> Option<String> {
-    fn diff(a: &str, b: &str) -> String {
+    fn equals((a, b): &(char, char)) -> bool { return a == b; }
+    fn common(a: &str, b: &str) -> String {
         return a
             .chars()
             .zip(b.chars())
-            .filter(|&(a, b)| a == b)
-            .map(|(a, _)| a)
+            .filter(equals)
+            .map(|t| t.0)
             .collect::<String>();
     }
 
@@ -42,7 +50,7 @@ fn common_box_letters(ids: &[&str]) -> Option<String> {
 
         if let Some(common) = tail
             .iter()
-            .map(|s| diff(head, s))
+            .map(|s| common(head, s))
             .find(|s| head.len() - s.len() == 1)
         {
             return Some(common);
