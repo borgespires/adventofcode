@@ -20,9 +20,9 @@ fn checksum(ids: &[&str]) -> i32 {
         (prev_dup, prev_trip): (i32, i32),
         (has_duplicates, has_triplicates): (bool, bool),
     ) -> (i32, i32) {
-        let new_duplicates = if has_duplicates { prev_dup + 1 } else { prev_dup };
-        let new_triplicates = if has_triplicates { prev_trip + 1 } else { prev_trip };
-        return (new_duplicates, new_triplicates);
+        let duplicates = if has_duplicates { prev_dup + 1 } else { prev_dup };
+        let triplicates = if has_triplicates { prev_trip + 1 } else { prev_trip };
+        return (duplicates, triplicates);
     }
 
     let (duplicates, triplicates) = ids
