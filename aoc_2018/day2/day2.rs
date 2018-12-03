@@ -34,6 +34,7 @@ fn checksum(ids: &[&str]) -> i32 {
 }
 
 fn common_box_letters(ids: &[&str]) -> Option<String> {
+    fn exact_diff_of(a: &str, b: &str, n: usize) -> bool { return a.len() - b.len() == n; }
     fn equals((a, b): &(char, char)) -> bool { return a == b; }
     fn common(a: &str, b: &str) -> String {
         return a
@@ -51,7 +52,7 @@ fn common_box_letters(ids: &[&str]) -> Option<String> {
         if let Some(common) = tail
             .iter()
             .map(|s| common(head, s))
-            .find(|s| head.len() - s.len() == 1)
+            .find(|s| exact_diff_of(*head, s, 1))
         {
             return Some(common);
         }
