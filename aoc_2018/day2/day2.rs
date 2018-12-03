@@ -34,8 +34,12 @@ fn checksum(ids: &[&str]) -> i32 {
 }
 
 fn common_box_letters(ids: &[&str]) -> Option<String> {
-    fn exact_diff_of(a: &str, b: &str, n: usize) -> bool { return a.len() - b.len() == n; }
-    fn equals((a, b): &(char, char)) -> bool { return a == b; }
+    fn exact_diff_of(a: &str, b: &str, n: usize) -> bool {
+        return a.len() - b.len() == n;
+    }
+    fn equals((a, b): &(char, char)) -> bool {
+        return a == b;
+    }
     fn common(a: &str, b: &str) -> String {
         return a
             .chars()
@@ -45,20 +49,18 @@ fn common_box_letters(ids: &[&str]) -> Option<String> {
             .collect::<String>();
     }
 
-    for i in 1..ids.len() {
-        let (_, other_ids) = ids.split_at(i);
-        let current_id = &ids[i - 1];
+    let mut common_box_letters: Option<String> = None;
+    let mut ids_to_search = ids.to_vec();
 
-        if let Some(common) = other_ids
+    while common_box_letters.is_none() && ids_to_search.len() > 0 {
+        let current_id = ids_to_search.pop().unwrap();
+        common_box_letters = ids_to_search
             .iter()
             .map(|other_id| common(current_id, other_id))
-            .find(|other_id| exact_diff_of(*current_id, other_id, 1))
-        {
-            return Some(common);
-        }
+            .find(|common_letters| exact_diff_of(current_id, common_letters, 1));
     }
 
-    None
+    return common_box_letters;
 }
 
 fn main() {
