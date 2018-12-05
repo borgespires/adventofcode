@@ -20,30 +20,36 @@ fn event_datetime(ev1: &Event, ev2: &Event) -> Ordering {
 #[derive(Debug)]
 struct SleepCollector {
     records: HashMap<u32, Vec<u32>>,
+    current_guard: u32,
+    feel_asleep: u32,
 }
 
 impl SleepCollector {
     fn new() -> SleepCollector {
         SleepCollector {
             records: HashMap::new(),
+            current_guard: 0,
+            feel_asleep: 0,
         }
     }
 
-    fn begin_shift(&self, guard: &u32) {
-        println!("{} just started his shift", guard);
-        // records.insert(guard, vec![0; 60]); if not exist
-        // change current guard
+    fn begin_shift(&mut self, guard: &u32) {
+        self.records.entry(*guard).or_insert(vec![0; 60]);
+        self.current_guard = *guard;
     }
 
-    fn fall_asleep(&self, minute: u32) {
-        println!("{} fell asleep at {}", "guard", minute);
+    fn fall_asleep(&mut self, minute: u32) {
+        self.feel_asleep = minute;
     }
 
-    fn wake_up(&self, minute: u32) {
-        println!("{} woke up at {}", "guard", minute);
+    fn wake_up(&mut self, minute: u32) {
+        let guard_record = self.records.get_mut(&self.current_guard).unwrap();
+        for m in self.feel_asleep..minute {
+            guard_record[m as usize] += 1;
+        }
     }
 
-    fn sleep_records(&self, events: &Vec<Event>) -> HashMap<u32, Vec<u32>> {
+    fn sleep_records(&mut self, events: &Vec<Event>) -> HashMap<u32, Vec<u32>> {
         for e in events.iter() {
             match &e.action {
                 Action::ShiftBegin { guard } => self.begin_shift(guard),
@@ -56,14 +62,6 @@ impl SleepCollector {
         return self.records.clone();
     }
 }
-
-/*
-    iterate over events
-    maintain state of guard
-    each guard as a fixed array of minutes
-    check diff between Asleep - wakeUp events
-    increment each minute
-**/
 
 fn main() {
     let mut f = File::open("./resources/input.txt").expect("file not found");
@@ -80,16 +78,33 @@ fn main() {
 
     events.sort_by(event_datetime);
 
-    for e in events.iter() {
-        println!("{:?}", e);
-    }
-
-    let collector = SleepCollector::new();
+    let mut collector = SleepCollector::new();
     let records = collector.sleep_records(&events);
 
-    for (guard, sleep) in records.iter() {
-        let minutes_asleep = sleep.iter().sum::<u32>();
-        let max_minute = sleep.iter().enumerate().max().unwrap();
-        println!("{}: \"{:?}\" \"{:?}\"", guard, minutes_asleep, max_minute);
+    fn sleepiest_minute(record: &Vec<u32>) -> (u32, u32) {
+        return record
+            .iter()
+            .enumerate()
+            .max_by_key(|&(_, times_asleep)| times_asleep)
+            .map(|(minute, times_asleep)| (minute as u32, *times_asleep))
+            .unwrap();
     }
+
+    let sleepiest_guard = records
+        .iter()
+        .map(|(guard, sleep_record)| (guard, sleep_record.iter().sum::<u32>()))
+        .max_by_key(|&(_, sleep_time)| sleep_time)
+        .map(|(guard, _)| guard)
+        .unwrap();
+
+    let guard_record = records.get(sleepiest_guard).unwrap();
+
+    let (guard, (minute, times)) = records
+        .iter()
+        .map(|(guard, sleep_record)| (guard, sleepiest_minute(sleep_record)))
+        .max_by_key(|&(_, (min, time_slept))| time_slept)
+        .unwrap();
+
+    println!("{}", sleepiest_guard * sleepiest_minute(guard_record).0);
+    println!("{}", guard * minute);
 }
