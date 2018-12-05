@@ -2,11 +2,11 @@ use std::cmp::Ordering;
 
 #[derive(Debug)]
 pub struct DateTime {
-    year: u32,
-    month: u32,
-    day: u32,
-    hour: u32,
-    minute: u32,
+    pub year: u32,
+    pub month: u32,
+    pub day: u32,
+    pub hour: u32,
+    pub minute: u32,
 }
 
 impl DateTime {

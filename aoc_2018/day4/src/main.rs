@@ -5,8 +5,10 @@ extern crate lazy_static;
 mod datetime;
 mod event;
 
+use event::Action;
 use event::Event;
 use std::cmp::Ordering;
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::prelude::*;
 use std::str::FromStr;
@@ -15,13 +17,45 @@ fn event_datetime(ev1: &Event, ev2: &Event) -> Ordering {
     return ev1.datetime.cmp(&ev2.datetime);
 }
 
-// fn sleep_records(events: &Vec<Event>) -> HashMap<u32, &[u32]> {
-//     let mut records: HashMap<u32, [u32]> = HashMap::new();
+#[derive(Debug)]
+struct SleepCollector {
+    records: HashMap<u32, Vec<u32>>,
+}
 
-//     records.insert(1, [0; 60]);
+impl SleepCollector {
+    fn new() -> SleepCollector {
+        SleepCollector {
+            records: HashMap::new(),
+        }
+    }
 
-//     return records;
-// }
+    fn begin_shift(&self, guard: &u32) {
+        println!("{} just started his shift", guard);
+        // records.insert(guard, vec![0; 60]); if not exist
+        // change current guard
+    }
+
+    fn fall_asleep(&self, minute: u32) {
+        println!("{} fell asleep at {}", "guard", minute);
+    }
+
+    fn wake_up(&self, minute: u32) {
+        println!("{} woke up at {}", "guard", minute);
+    }
+
+    fn sleep_records(&self, events: &Vec<Event>) -> HashMap<u32, Vec<u32>> {
+        for e in events.iter() {
+            match &e.action {
+                Action::ShiftBegin { guard } => self.begin_shift(guard),
+                Action::Asleep => self.fall_asleep(e.datetime.minute),
+                Action::WakeUp => self.wake_up(e.datetime.minute),
+                _ => println!("Ain't special"),
+            }
+        }
+
+        return self.records.clone();
+    }
+}
 
 /*
     iterate over events
@@ -48,5 +82,14 @@ fn main() {
 
     for e in events.iter() {
         println!("{:?}", e);
+    }
+
+    let collector = SleepCollector::new();
+    let records = collector.sleep_records(&events);
+
+    for (guard, sleep) in records.iter() {
+        let minutes_asleep = sleep.iter().sum::<u32>();
+        let max_minute = sleep.iter().enumerate().max().unwrap();
+        println!("{}: \"{:?}\" \"{:?}\"", guard, minutes_asleep, max_minute);
     }
 }
