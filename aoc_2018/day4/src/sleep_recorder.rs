@@ -65,23 +65,35 @@ impl SleepRecorder {
     }
 
     pub fn sleepiest_minute(&self, guard: u32) -> (u32, u32) {
+        fn times_found_asleep((_min, times): &(usize, &u32)) -> u32 {
+            return **times;
+        }
+
+        fn to_u32((minute, times_asleep): (usize, &u32)) -> (u32, u32) {
+            return (minute as u32, *times_asleep);
+        }
+
         return self
             .records
             .get(&guard)
             .unwrap()
             .iter()
             .enumerate()
-            .max_by_key(|&(_min, times_asleep)| times_asleep)
-            .map(|(minute, times_asleep)| (minute as u32, *times_asleep))
+            .max_by_key(times_found_asleep)
+            .map(to_u32)
             .unwrap();
     }
 
     pub fn overall_sleepiest_minute(&self) -> (u32, (u32, u32)) {
+        fn times_found_asleep((_guard, (_min, times)): &(u32, (u32, u32))) -> u32 {
+            return *times;
+        }
+
         return self
             .records
             .keys()
             .map(|&guard| (guard, self.sleepiest_minute(guard)))
-            .max_by_key(|&(_guard, (_min, times_asleep))| times_asleep)
+            .max_by_key(times_found_asleep)
             .unwrap();
     }
 }
