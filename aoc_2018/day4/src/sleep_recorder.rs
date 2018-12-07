@@ -52,7 +52,7 @@ impl SleepRecorder {
     }
 
     pub fn sleepiest_guard(&self) -> (u32, u32) {
-        fn total_sleep_time((_, time): &(u32, u32)) -> u32 {
+        fn time((_, time): &(u32, u32)) -> u32 {
             return *time;
         }
 
@@ -60,7 +60,7 @@ impl SleepRecorder {
             .records
             .keys()
             .map(|&guard| (guard, self.total_sleep_time(guard)))
-            .max_by_key(total_sleep_time)
+            .max_by_key(time)
             .unwrap();
     }
 
