@@ -6,95 +6,147 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::str::FromStr;
 
-/*
- * Find the smaller rectangle that bounds the all set of points.
- * Returns top-left and bottom-right corners of the bounding box.
-*/
-fn bounding_rectangle(coordinates: &Vec<Coordinate>) -> (Coordinate, Coordinate) {
-    (
-        Coordinate {
-            x: coordinates.iter().min_by_key(|&c| c.x).unwrap().x,
-            y: coordinates.iter().min_by_key(|&c| c.y).unwrap().y,
-        },
-        Coordinate {
-            x: coordinates.iter().max_by_key(|&c| c.x).unwrap().x,
-            y: coordinates.iter().max_by_key(|&c| c.y).unwrap().y,
-        },
-    )
+struct Grid {
+    points_of_interest: Vec<Coordinate>,
 }
 
-fn nearest_coordinate<'a>(
-    coordinates: &'a Vec<Coordinate>,
-    coordinate: &Coordinate,
-) -> Option<&'a Coordinate> {
-    fn manhattan_distance(coordinate_a: &Coordinate, coordinate_b: &Coordinate) -> i32 {
-        (coordinate_a.x - coordinate_b.x).abs() + (coordinate_a.y - coordinate_b.y).abs()
-    }
-
-    let nearest: Vec<(&Coordinate, i32)> = coordinates
-        .iter()
-        .map(|c| (c, manhattan_distance(c, coordinate)))
-        .collect::<Vec<(&Coordinate, i32)>>();
-
-    let first = nearest.iter().min_by_key(|(c, d)| d).unwrap();
-    let others: Vec<&(&Coordinate, i32)> = nearest.iter().filter(|(c, d)| *d == first.1).collect();
-
-    if others.len() > 1 {
-        None
-    } else {
-        Some(first.0)
-    }
-}
-
-fn calculate_areas<'a>(
-    coordinates: &'a Vec<Coordinate>,
-    boundary: &(Coordinate, Coordinate),
-) -> HashMap<&'a Coordinate, Vec<Coordinate>> {
-    let mut areas = HashMap::new();
-    let (top_left, bottom_right) = boundary;
-
-    for x in top_left.x..bottom_right.x + 1 {
-        for y in top_left.y..bottom_right.y + 1 {
-            let contested = Coordinate::new(x, y);
-            match nearest_coordinate(&coordinates, &contested) {
-                Some(coordinate) => areas
-                    .entry(coordinate)
-                    .or_insert_with(Vec::new)
-                    .push(contested),
-                None => (),
-            }
+impl Grid {
+    fn new(coordinates: Vec<Coordinate>) -> Grid {
+        Grid {
+            points_of_interest: coordinates,
         }
     }
 
-    areas
-}
-
-fn near_area(coordinates: &Vec<Coordinate>, boundary: &(Coordinate, Coordinate)) -> i32 {
-    let (top_left, bottom_right) = boundary;
-
-    fn manhattan_distance(coordinate_a: &Coordinate, coordinate_b: &Coordinate) -> i32 {
-        (coordinate_a.x - coordinate_b.x).abs() + (coordinate_a.y - coordinate_b.y).abs()
+    /*
+     * Find the smaller rectangle that bounds the all set of points.
+     * Returns top-left and bottom-right corners of the bounding box.
+     */
+    fn boundary(&self) -> (Coordinate, Coordinate) {
+        (
+            Coordinate {
+                x: self
+                    .points_of_interest
+                    .iter()
+                    .min_by_key(|&c| c.x)
+                    .unwrap()
+                    .x,
+                y: self
+                    .points_of_interest
+                    .iter()
+                    .min_by_key(|&c| c.y)
+                    .unwrap()
+                    .y,
+            },
+            Coordinate {
+                x: self
+                    .points_of_interest
+                    .iter()
+                    .max_by_key(|&c| c.x)
+                    .unwrap()
+                    .x,
+                y: self
+                    .points_of_interest
+                    .iter()
+                    .max_by_key(|&c| c.y)
+                    .unwrap()
+                    .y,
+            },
+        )
     }
 
-    fn sum_all(coordinates: &Vec<Coordinate>, coordinate: &Coordinate) -> i32 {
-        coordinates
+    fn areas(&self) -> HashMap<&Coordinate, usize> {
+        let claimed_areas = self.claim_near_points();
+
+        self.remove_infinite_areas(claimed_areas)
+            .into_iter()
+            .map(|(point, claimed_points)| (point, claimed_points.len()))
+            .collect()
+    }
+
+    fn claim_near_points(&self) -> HashMap<&Coordinate, Vec<Coordinate>> {
+        let mut claimed = HashMap::new();
+        let (top_left, bottom_right) = self.boundary();
+
+        for x in top_left.x..bottom_right.x + 1 {
+            for y in top_left.y..bottom_right.y + 1 {
+                let current = Coordinate::new(x, y);
+                match self.nearest_point_of_interest(&current) {
+                    Some(point) => claimed.entry(point).or_insert_with(Vec::new).push(current),
+                    None => (),
+                }
+            }
+        }
+
+        claimed
+    }
+
+    fn nearest_point_of_interest(&self, coordinate: &Coordinate) -> Option<(&Coordinate)> {
+        let distances_to_points: Vec<(&Coordinate, i32)> = self
+            .points_of_interest
             .iter()
-            .map(|c| manhattan_distance(c, coordinate))
-            .sum()
-    }
+            .map(|point| (point, manhattan_distance(point, coordinate)))
+            .collect::<Vec<(&Coordinate, i32)>>();
 
-    let mut counter = 0;
+        let (nearest, min_distance) = distances_to_points.iter().min_by_key(|(_, d)| d).unwrap();
+        let all_with_min_distance: Vec<&(&Coordinate, i32)> = distances_to_points
+            .iter()
+            .filter(|(_, d)| *d == *min_distance)
+            .collect();
 
-    for x in top_left.x..bottom_right.x + 1 {
-        for y in top_left.y..bottom_right.y + 1 {
-            let contested = Coordinate::new(x, y);
-            if sum_all(&coordinates, &contested) < 10000 {
-                counter += 1;
-            }
+        if all_with_min_distance.len() > 1 {
+            None
+        } else {
+            Some(nearest)
         }
     }
 
-    counter
+    /**
+     * remove points that claimed area on the boundary
+     */
+    fn remove_infinite_areas<'a>(
+        &self,
+        claimed: HashMap<&'a Coordinate, Vec<Coordinate>>,
+    ) -> HashMap<&'a Coordinate, Vec<Coordinate>> {
+        let (top_left, bottom_right) = self.boundary();
+        claimed
+            .into_iter()
+            .filter(|(_, claimed_points)| {
+                !claimed_points.iter().any(|point| {
+                    point.y == top_left.y
+                        || point.y == bottom_right.y
+                        || point.x == top_left.x
+                        || point.x == bottom_right.x
+                })
+            }).collect()
+    }
+
+    fn safe_region(&self, max_distance_sum: i32) -> Vec<Coordinate> {
+        let (top_left, bottom_right) = self.boundary();
+
+        fn sum_all(points_of_interest: &Vec<Coordinate>, coordinate: &Coordinate) -> i32 {
+            points_of_interest
+                .iter()
+                .map(|point| manhattan_distance(point, coordinate))
+                .sum()
+        }
+
+        let mut safe_points = vec![];
+
+        for x in top_left.x..bottom_right.x + 1 {
+            for y in top_left.y..bottom_right.y + 1 {
+                let current = Coordinate::new(x, y);
+                if sum_all(&self.points_of_interest, &current) < max_distance_sum {
+                    safe_points.push(current);
+                }
+            }
+        }
+
+        safe_points
+    }
+}
+
+fn manhattan_distance(coordinate_a: &Coordinate, coordinate_b: &Coordinate) -> i32 {
+    (coordinate_a.x - coordinate_b.x).abs() + (coordinate_a.y - coordinate_b.y).abs()
 }
 
 fn main() {
@@ -109,45 +161,8 @@ fn main() {
         .map(|s| Coordinate::from_str(s).unwrap())
         .collect();
 
-    let boundary = bounding_rectangle(&coordinates);
-
-    let areas = calculate_areas(&coordinates, &boundary);
-
-    let res: HashMap<&Coordinate, usize> = areas
-        .into_iter()
-        .filter_map(|(key, value)| {
-            if value
-                .iter()
-                .any(|v| v.y == boundary.0.y || v.y == boundary.1.y)
-            {
-                None
-            } else if value
-                .iter()
-                .any(|v| v.x == boundary.0.x || v.x == boundary.1.x)
-            {
-                None
-            } else if value
-                .iter()
-                .any(|v| v.y == boundary.0.y || v.y == boundary.1.y)
-            {
-                None
-            } else {
-                Some((key.to_owned(), value.len()))
-            }
-        }).collect();
-
-    let m = res.values().max().unwrap();
-    let s = near_area(&coordinates, &boundary);
-
-
-    assert!(*m as i32 == 4976);
-    assert!(s == 46462);
-
-    println!("{:?}", coordinates);
-    println!("{:?}", boundary);
-    // println!("{:?}", areas);
-    println!("{:?}", res);
-    println!("{:?}", m);
-
-    println!("{:?}", s);
+    let grid = Grid::new(coordinates);
+    
+    println!("{:?}", grid.areas().values().max().unwrap());
+    println!("{:?}", grid.safe_region(10000).into_iter().count());
 }
