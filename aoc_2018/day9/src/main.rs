@@ -32,9 +32,9 @@ impl Circle {
         }
     }
 
-    fn counter_clockwise(&self, delta: i32) -> usize {
+    fn counter_clockwise(&self, delta: u32) -> usize {
         let mut marble = self.current;
-        for _ in 0..delta.abs() {
+        for _ in 0..delta {
             marble = self.marbles[marble].prev;
         }
         marble
