@@ -1,6 +1,4 @@
 use std::collections::HashMap;
-use std::fs::File;
-use std::io::prelude::*;
 
 #[derive(Debug)]
 struct Marble {
@@ -98,12 +96,6 @@ impl Game {
 }
 
 fn main() {
-    let mut f = File::open("./resources/input.txt").expect("file not found");
-
-    let mut contents = String::new();
-    f.read_to_string(&mut contents)
-        .expect("something went wrong reading the file");
-
     // println!("{:?}", Game::new().simulate(10, 1618).values().max().unwrap()); // 8317
     // println!("{:?}", Game::new().simulate(13, 7999).values().max().unwrap()); // 14637
     // println!("{:?}", Game::new().simulate(17, 1104).values().max().unwrap()); // 2764
