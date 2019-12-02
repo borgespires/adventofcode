@@ -3,9 +3,7 @@ import math
 import strconv
 
 fn main() {
-    filename := 'input.txt'
-
-    modules := os.read_lines(filename)?
+    modules := os.read_lines("input.txt")?
 
 	println(total_fuel(modules, required_fuel)) // star 1
 	println(total_fuel(modules, rec_required_fuel)) // star 2
